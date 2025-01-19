@@ -79,6 +79,24 @@ def cria_grafo_bipartido():
     Verificar o que ainda falta
 """
 
+def exclui_imagens(diretorio):
+    try:
+        # Se o diretorio não existe
+        if not os.path.exists(diretorio):
+            print(f"O diretório {diretorio} não existe.")
+            return
+
+        for arquivo in os.listdir(diretorio):
+            caminho_arquivo = os.path.join(diretorio, arquivo)
+
+            # Verifica se o arquivo existe
+            if os.path.isfile(caminho_arquivo):
+                nome, ext = os.path.splitext(arquivo)
+
+                if ('.png' and ext.lower() == '.png'):
+                    os.remove(caminho_arquivo)
+    except Exception as e:
+        print(f'Ocorreu o seguinte erro: {e}')
 
 def cria_gif(subgrafos, conj_vertices, repeticao):
     def fazer_imagens(grafo, destino, formato, cores):
@@ -114,9 +132,8 @@ def cria_gif(subgrafos, conj_vertices, repeticao):
 
     imageio.mimsave(f'./Processo_emparelhamento_{repeticao}.gif', frame, fps=1.5)
 
-    for file in os.listdir('/temporary_imgs'):
-        if file.endswith('.png'):
-            os.remove(file)
+    # Exclui as imagens não usadas mais
+    exclui_imagens(diretorio='/home/rafaelb/Documentos/Projetos-de-Teoria-e-Aplica-o-de-Grafos/Projeto2/temporary_imgs')
 
 
 
@@ -278,7 +295,7 @@ def emparelhamento(grafo, subconjunto):
     # Chamada das funções
     repescagem = algoritmo_Gale_Shapley()
 
-    #cria_gif(subgrafos, subconjunto, 1)
+    cria_gif(subgrafos, subconjunto, 1)
 
     for i in range(2,10):
         candidatosRepescagem = {i: copy.deepcopy(listaAlunos[i]) for i in repescagem}
