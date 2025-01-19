@@ -1,11 +1,9 @@
 import matplotlib.pyplot as plt # Biblioteca responsável por criar as imagens do grafo
 from matplotlib import pylab as pl # Biblioteca responsável por criar as imagens do grafo
-import imageio # Biblioteca responsavel por fazer o gif do grafo.
 import networkx as nx # Biblioteca responsavel por manipular o grafo
 from networkx.drawing.layout import bipartite_layout
 import copy
 import os
-import time
 
 # Para facilitar a manipulação, vamos deixar as listas como variaveis Globais.
 listaAlunos = {}
@@ -97,45 +95,31 @@ def exclui_imagens(diretorio):
     except Exception as e:
         print(f'Ocorreu o seguinte erro: {e}')
 
-def cria_gif(subgrafos, conj_vertices, repeticao):
+# Função que cria uma imagem PNG do emparelhento
+def cria_imagem_emparelhemento(subgrafos, conj_vertices, repeticao):
     def fazer_imagens(grafo, destino, formato, cores):
         fig = plt.figure(figsize=(300, 300))
         pl.figure()
         nx.draw_networkx(grafo, pos=formato, with_labels=False, node_size=5, node_color=cores, edge_color='g')
         plt.savefig(destino, transparent=False, facecolor='w')
-
         plt.close()
 
     grafo = subgrafos[-1]
     pos = bipartite_layout(grafo, conj_vertices)  # Define a posição para desenhar na tela
-    colors = ["lightblue" if i[0:1] == "P" else "red" for i in grafo.nodes]
+    colors = ["lightblue" if i[0:1] == "P" else "red" for i in grafo.nodes]  # A cor do vertice do Projeto é Azul claro e a cor do aluno é vermelho
     fazer_imagens(grafo, f'./grafo_gerado/emparelhamento_{repeticao}.png', pos, colors)
 
-    x = 1
-    for grafo in subgrafos:
-        pos = bipartite_layout(grafo, conj_vertices)  # Define a posição para desenhar na tela
-        colors = ["lightblue" if i[0:1] == "P" else "red" for i in grafo.nodes]
 
-        destino = f'./temporary_imgs/img_{x}.png'
-        fazer_imagens(grafo, destino, pos, colors)
-        x += 1
-        plt.close('all') # Limpa cache do plt se não o python reclama de excesso de imagens geradas.
+def mostra_emparelhamento_terminal(listaEmparelhemento, qtdExecucoes):
+    print(f" ---------------------EXECUÇÃO {qtdExecucoes}-------------------------------- ")
+    print("Formato: {Projeto: Aluno Alocado -> Aluno desalocado\n")
+    for projeto, conexoes in listaEmparelhemento.items():
+        if conexoes[1] == '':
+            print(f"{projeto}: {conexoes[0]}")
+        else:
+            print(f"{projeto}: {conexoes[0]} -> {conexoes[1]}")
 
-
-    # Criando o gif
-    frame = []
-    # Função que pega cada uma das imagens geradas e cria um gif dos cliques maximais.
-    for i in range(1, len(subgrafos) + 1):
-        imagem = imageio.v2.imread(f'./temporary_imgs/img_{i}.png')
-        frame.append(imagem)
-
-    imageio.mimsave(f'./gif-dos-emparelhamentos/Processo_emparelhamento_{repeticao}.gif', frame, 'GIF', fps=4)
-
-    # Exclui as imagens não usadas mais
-    exclui_imagens(diretorio='/home/rafaelb/Documentos/Projetos-de-Teoria-e-Aplica-o-de-Grafos/Projeto2/temporary_imgs')
-
-
-
+    print('\n\n')
 
 def emparelhamento(grafo, subconjunto):
     """
@@ -145,10 +129,13 @@ def emparelhamento(grafo, subconjunto):
         Depois vamos colocar os alunos em uma lista de candidatos que será usada para identificar se um aluno foi ou não alocado a um projeto.
 
     """
-    copiaListaAlunos = copy.deepcopy(listaAlunos);
+    copiaListaAlunos = copy.deepcopy(listaAlunos)
     listaCandidatos = [i for i in copiaListaAlunos.keys()]
 
     subgrafos = [grafo.copy()]
+
+    # Lista de todas as interações
+    listaEmparelhamentos = {i: [] for i in listaProjetos.keys()}
 
     """
         O Algoritmo a seguir segue a mesma logica que o algotimo de Gale-Shapley, só que com algumos modificações similares
@@ -186,11 +173,15 @@ def emparelhamento(grafo, subconjunto):
                             listaCandidatos.remove(aluno)
                             listaCandidatos.append(ultimoAluno)
 
+
                             #cria aresta entre projeto e aluno
                             grafo.add_edge(projeto, aluno)
                             #remove aresta entre projeto e último aluno
                             grafo.remove_edge(projeto, ultimoAluno)
                             subgrafos.append(grafo.copy())
+
+                            # Faz a troca dos alunos
+                            listaEmparelhamentos[projeto].append([aluno, ultimoAluno])
 
                     # Se o projeto não estiver cheio, aloca ele no projeto
                     else:
@@ -200,6 +191,9 @@ def emparelhamento(grafo, subconjunto):
                         # cria aresta entre projeto e aluno
                         grafo.add_edge(projeto, aluno)
                         subgrafos.append(grafo.copy())
+
+                        # Adiciona aluno ao projeto
+                        listaEmparelhamentos[projeto].append([aluno, ''])
 
             #Caso o aluno não tenha sido alocado e tenha acabado os seus projetos de interece, ele vai pra repescagem
             if len(copiaListaAlunos[aluno][0]) == 0 and aluno in listaCandidatos:
@@ -243,6 +237,9 @@ def emparelhamento(grafo, subconjunto):
                             grafo.add_edge(projeto, aluno)
                             subgrafos.append(grafo.copy())
 
+                            # Adiciona o emparelhamento
+                            listaEmparelhamentos[projeto].append([aluno, ultimoAluno])
+
                             # O ultimo aluno da lista do projeto, passa a ser o aluno que tentará outro projeto
                             aluno = ultimoAluno
 
@@ -269,6 +266,9 @@ def emparelhamento(grafo, subconjunto):
                                 grafo.add_edge(projeto, aluno)
                                 subgrafos.append(grafo.copy())
 
+                                #Adiciona o emparelhento
+                                listaEmparelhamentos[projeto].append([aluno, ultimoAluno])
+
                                 # O ultimo aluno da lista do projeto, passa a ser o aluno que tentará outro projeto
                                 aluno = ultimoAluno
 
@@ -283,6 +283,8 @@ def emparelhamento(grafo, subconjunto):
                         grafo.add_edge(projeto, aluno)
                         subgrafos.append(grafo.copy())
 
+                        listaEmparelhamentos[projeto].append([aluno, ''])
+
                         break
 
             # Se o aluno não tiver mais projetos de interesse, ele passa para a repescagem
@@ -291,33 +293,25 @@ def emparelhamento(grafo, subconjunto):
 
         return repescagemIntermediaria.copy()
 
-    inicio = time.time()
     # Chamada das funções
     repescagem = algoritmo_Gale_Shapley()
-    fim = time.time()
-    print('O tempo de execução do Algoritimo de Gale Shapley foi: %.2f segundos' % (fim - inicio))
 
-    cria_gif(subgrafos, subconjunto, 1)
-    fim=time.time()
-    print('O tempo de execução do plot das imagens foi: %.2f segundos\n' % (fim - inicio))
+    # Mostra no terminal quais foram os emparelhentos
+    mostra_emparelhamento_terminal(listaEmparelhamentos, 1)
 
+    # Cria uma imagem do emparelhento no diretorio ./grafo-gerado
+    cria_imagem_emparelhemento(subgrafos, subconjunto, 1)
 
     for i in range(2,11):
         candidatosRepescagem = {i: copy.deepcopy(listaAlunos[i]) for i in repescagem}
 
-        inicio = time.time()
-
         repescagem = emparelhamentoRepescagem(repescagem, copy.deepcopy(candidatosRepescagem))
 
-        fim = time.time()
-        print(f'O tempo de execução da repescagem {i} foi: %.2f segundos'% (fim - inicio))
+        # Mostra no terminal quais foram os emparelhentos
+        mostra_emparelhamento_terminal(listaEmparelhamentos, 1)
 
-
-        cria_gif(subgrafos, subconjunto, i)
-        fim=time.time()
-        print(f'O tempo de execução do plot da imagem{i} foi: %.2f segundos\n' % (fim - inicio))
-
-    return grafo
+        # Cria uma imagem do emparelhento no diretorio ./grafo-gerado
+        cria_imagem_emparelhemento(subgrafos, subconjunto, i)
 
 """
 
@@ -330,6 +324,6 @@ le_entradas()
 grafo = cria_grafo_bipartido()
 # Então, realizamos o emparelhamento do grafo
 projetos = [x for x in listaProjetos.keys()]
-grafo = emparelhamento(grafo, projetos)
+emparelhamento(grafo, projetos)
 
 
