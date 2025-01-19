@@ -5,10 +5,12 @@ import networkx as nx # Biblioteca responsavel por manipular o grafo
 from networkx.drawing.layout import bipartite_layout
 import copy
 import os
+import time
 
 # Para facilitar a manipulação, vamos deixar as listas como variaveis Globais.
 listaAlunos = {}
 listaProjetos = {}
+inicio = time.time()
 
 def le_entradas():
     # Abre o arquivo para leitura
@@ -84,7 +86,13 @@ def cria_gif(subgrafos, conj_vertices, repeticao):
         pl.figure()
         nx.draw_networkx(grafo, pos=formato, with_labels=False, node_size=5, node_color=cores, edge_color='g')
         plt.savefig(destino, transparent=False, facecolor='w')
+
         plt.close()
+
+    grafo = subgrafos[-1]
+    pos = bipartite_layout(grafo, conj_vertices)  # Define a posição para desenhar na tela
+    colors = ["lightblue" if i[0:1] == "P" else "red" for i in grafo.nodes]
+    fazer_imagens(grafo, f'./emparelhamento_{repeticao}.png', pos, colors)
 
     x = 1
     for grafo in subgrafos:
@@ -96,10 +104,6 @@ def cria_gif(subgrafos, conj_vertices, repeticao):
         x += 1
         plt.close('all') # Limpa cache do plt se não o python reclama de excesso de imagens geradas.
 
-    grafo = subgrafos[-1]
-    pos = bipartite_layout(grafo, conj_vertices)  # Define a posição para desenhar na tela
-    colors = ["lightblue" if i[0:1] == "P" else "lightred" for i in grafo.nodes]
-    fazer_imagens(grafo, f'./emparelhamento_{repeticao}.png', pos, colors)
 
     # Criando o gif
     frame = []
@@ -110,7 +114,7 @@ def cria_gif(subgrafos, conj_vertices, repeticao):
 
     imageio.mimsave(f'./Processo_emparelhamento_{repeticao}.gif', frame, fps=1.5)
 
-    for file in os.listdir('./temporary_imgs'):
+    for file in os.listdir('/temporary_imgs'):
         if file.endswith('.png'):
             os.remove(file)
 
@@ -274,12 +278,12 @@ def emparelhamento(grafo, subconjunto):
     # Chamada das funções
     repescagem = algoritmo_Gale_Shapley()
 
-    cria_gif(subgrafos, subconjunto, 1)
+    #cria_gif(subgrafos, subconjunto, 1)
 
     for i in range(2,10):
         candidatosRepescagem = {i: copy.deepcopy(listaAlunos[i]) for i in repescagem}
         repescagem = emparelhamentoRepescagem(repescagem, copy.deepcopy(candidatosRepescagem))
-        cria_gif(subgrafos, subconjunto, i)
+        ########################################################################################cria_gif(subgrafos, subconjunto, i)
 
     return grafo
 
@@ -296,3 +300,5 @@ grafo = cria_grafo_bipartido()
 projetos = [x for x in listaProjetos.keys()]
 grafo = emparelhamento(grafo, projetos)
 
+fim = time.time()
+print('O tempo de execução foi: %.2f segundos' % (fim - inicio))
